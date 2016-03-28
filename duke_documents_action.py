@@ -35,21 +35,18 @@ class DukeDocumentAction(ActionBase):
         "helper": "Нижний порог не должен быть ниже 0 и выже верхнего порога (рекомендуемое значение ~0.5)"
         }
 
-        """
-        final_fields = {}
-        qh = QueryHandler(self.handler.application, self.handler.request)
-        query = qh.get_state_query()
-        fields = yield qh._get_fields()
-        for field in fields:
-            if string.find(field.term, "facets") != -1:
-                final_fields[field.term] = field.title
+        props["object_type"] = {
+        "title": "Тип выборки",
+        "type": "string",
+        "enum": ["persons", "powerplants"]
+        }
 
-        for key in final_fields.keys():
-            props[key] = {
-            "title": final_fields[key],
-            "type": "string"
-            }
-        """
+        opts["object_type"] = {
+        "type": "checkbox",
+        "label": "Тип выборки",
+        "optionLabels": ["Персона", "Электростанция"]
+        }
+
 
     @coroutine
     def execute(self, docid=None, tag=None, **kwargs):
@@ -58,11 +55,11 @@ class DukeDocumentAction(ActionBase):
         qh = QueryHandler(self.handler.application, self.handler.request)
         query = qh.get_state_query()
         fields = yield qh._get_fields()
-        for field in fields:
-            if string.find(field.term, "facets") != -1:
-                final_fields[field.term] = field.title
 
-        job = {"action": "find_duplicates_duke", "query": query[0].serialize(), "fields": json.dumps(final_fields)}
+        for field in fields:
+            if string.find(field.term, "facets") != -1 and field.datatype in ["string", "datetime"]:
+                final_fields[field.term] = field.title
+        job = {"action": "find_duplicates_duke", "query": query[0].serialize(), "fields": json.dumps(final_fields), "object_type": kwargs.get("object_type")}
         self.handler.queue.put(job, tube=options.bs_bgworker_tube, priority=50, use_storage=True)
 
 
